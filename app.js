@@ -11,9 +11,14 @@ app.use(express.json());
 const companyRoutes = require('./src/routes/companyRoutes');
 app.use('/api/companies', companyRoutes);
 
+const manufacturingUnitRoutes = require('./src/routes/manufacturingUnitRoutes');
+app.use('/api/manufacturingUnits',manufacturingUnitRoutes)
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
+
+
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
