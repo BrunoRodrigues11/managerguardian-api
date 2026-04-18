@@ -14,6 +14,9 @@ app.use('/api/companies', companyRoutes);
 const manufacturingUnitRoutes = require('./src/routes/manufacturingUnitRoutes');
 app.use('/api/manufacturingUnits',manufacturingUnitRoutes)
 
+const equipmentTypeRoutes = require('./src/routes/equipmentTypeRoutes');
+app.use('/api/equipmentTypes', equipmentTypeRoutes);
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
