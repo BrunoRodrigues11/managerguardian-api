@@ -20,6 +20,9 @@ app.use('/api/equipmentTypes', equipmentTypeRoutes);
 const technicianRoutes = require('./src/routes/technicianRoutes');
 app.use('/api/technicians', technicianRoutes);
 
+const costCategoryRoutes = require('./src/routes/costCategoryRoutes');
+app.use('/api/costCategories', costCategoryRoutes);
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
