@@ -29,6 +29,9 @@ app.use('/api/maintenances', maintenanceRoutes);
 const maintenanceCostRoutes = require('./src/routes/maintenanceCostRoutes');
 app.use('/api/maintenanceCosts', maintenanceCostRoutes);
 
+const visitRoutes = require('./src/routes/visitRoutes');
+app.use('/api/visits', visitRoutes);
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
