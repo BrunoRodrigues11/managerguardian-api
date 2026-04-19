@@ -1,6 +1,6 @@
 -- Script SQL para PostgreSQL - Gestão TI Pro
 
--- 1. Tabela de Unidades Fabris
+-- 1. Tabela de Unidades Fabris OK
 CREATE TABLE manufacturing_units (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE manufacturing_units (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Tabela de Empresas (Fornecedores)
+-- 2. Tabela de Empresas (Fornecedores) OK
 CREATE TABLE companies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(150) NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE companies (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Tabela de Tipos de Equipamento
+-- 3. Tabela de Tipos de Equipamento OK
 CREATE TABLE equipment_types (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE equipment_types (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Tabela de Técnicos
+-- 4. Tabela de Técnicos OK
 CREATE TABLE technicians (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(150) NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE technicians (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Tabela de Categorias de Custo
+-- 5. Tabela de Categorias de Custo OK
 CREATE TABLE cost_categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE cost_categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Tabela de Manutenções
+-- 6. Tabela de Manutenções OK
 CREATE TABLE maintenances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_number VARCHAR(50) NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE maintenances (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Tabela de Custos de Manutenção
+-- 7. Tabela de Custos de Manutenção 
 CREATE TABLE maintenance_costs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     maintenance_id UUID REFERENCES maintenances(id) ON DELETE CASCADE,
