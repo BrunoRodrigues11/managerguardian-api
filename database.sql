@@ -70,7 +70,7 @@ CREATE TABLE maintenances (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Tabela de Custos de Manutenção 
+-- 7. Tabela de Custos de Manutenção OK
 CREATE TABLE maintenance_costs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     maintenance_id UUID REFERENCES maintenances(id) ON DELETE CASCADE,
@@ -82,7 +82,7 @@ CREATE TABLE maintenance_costs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. Tabela de Visitas Técnicas
+-- 8. Tabela de Visitas Técnicas OK
 CREATE TABLE visits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_number VARCHAR(50) NOT NULL,
@@ -103,7 +103,7 @@ CREATE TABLE visits (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. Tabela de Logs de Visitas
+-- 9. Tabela de Logs de Visitas OK
 CREATE TABLE visit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     visit_id UUID REFERENCES visits(id) ON DELETE CASCADE,
@@ -112,7 +112,7 @@ CREATE TABLE visit_logs (
     user_name VARCHAR(100) NOT NULL
 );
 
--- 10. Tabela de Usuários e Perfis
+-- 10. Tabela de Usuários e Perfis OK
 CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,

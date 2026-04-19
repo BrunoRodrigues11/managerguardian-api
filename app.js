@@ -35,6 +35,9 @@ app.use('/api/visits', visitRoutes);
 const visitLogRoutes = require('./src/routes/visitLogRoutes');
 app.use('/api/visitLogs', visitLogRoutes);
 
+const profileRoutes = require('./src/routes/profileRoutes');
+app.use('/api/profiles', profileRoutes);
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
