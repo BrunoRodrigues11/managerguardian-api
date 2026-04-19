@@ -7,12 +7,33 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rotas
+// ==========================================
+// 🔓 ROTAS PÚBLICAS (Não exigem Token)
+// ==========================================
+
+// Importante: A rota de usuários precisa ficar solta para que o front-end 
+// consiga fazer o POST para /api/users/login e pegar o Token!
+const userRoutes = require('./src/routes/userRoutes');
+app.use('/api/users', userRoutes);
+
+
+// ==========================================
+// 🔐 MIDDLEWARE DE SEGURANÇA (O Cadeado)
+// ==========================================
+const authMiddleware = require('./src/middlewares/authMiddleware');
+// Daqui para baixo, NENHUMA rota funciona sem enviar o Token no Header!
+app.use(authMiddleware);
+
+
+// ==========================================
+// 🔒 ROTAS PROTEGIDAS (Exigem Token JWT)
+// ==========================================
+
 const companyRoutes = require('./src/routes/companyRoutes');
 app.use('/api/companies', companyRoutes);
 
 const manufacturingUnitRoutes = require('./src/routes/manufacturingUnitRoutes');
-app.use('/api/manufacturingUnits',manufacturingUnitRoutes)
+app.use('/api/manufacturingUnits', manufacturingUnitRoutes);
 
 const equipmentTypeRoutes = require('./src/routes/equipmentTypeRoutes');
 app.use('/api/equipmentTypes', equipmentTypeRoutes);
@@ -38,11 +59,13 @@ app.use('/api/visitLogs', visitLogRoutes);
 const profileRoutes = require('./src/routes/profileRoutes');
 app.use('/api/profiles', profileRoutes);
 
+// ==========================================
+// TRATAMENTO DE ERROS GLOBAIS
+// ==========================================
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
-
-
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);

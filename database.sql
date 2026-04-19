@@ -112,7 +112,7 @@ CREATE TABLE visit_logs (
     user_name VARCHAR(100) NOT NULL
 );
 
--- 10. Tabela de Usuários e Perfis OK
+-- 10. Tabela de Perfis OK
 CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
@@ -121,6 +121,7 @@ CREATE TABLE profiles (
     active BOOLEAN DEFAULT true
 );
 
+-- 11. Tabela de Usuários  OK
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(150) NOT NULL,
@@ -130,7 +131,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de junção para usuários e múltiplos perfis
+-- Tabela de junção para usuários e múltiplos perfis OK
 CREATE TABLE user_profiles (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
