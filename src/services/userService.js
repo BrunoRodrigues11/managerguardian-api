@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 class UserService {
   async createUser(data) {
@@ -168,6 +170,89 @@ class UserService {
     const query = 'UPDATE users SET active = false WHERE id = $1 RETURNING id, name, email, active;';
     const result = await db.query(query, [id]);
     return result.rows[0];
+  }
+
+  async forgotPassword(email) {
+    // 1. Verifica se o usuário existe
+    const query = 'SELECT id, name FROM users WHERE email = $1 AND active = true;';
+    const result = await db.query(query, [email]);
+    const user = result.rows[0];
+
+    if (!user) {
+      // Retornamos sucesso mesmo se não existir para evitar "Email Enumeration Attack" (vazamento de dados)
+      return { message: 'Se o email existir, um código foi enviado.' }; 
+    }
+
+    // 2. Gera um código de 6 dígitos e define validade (15 minutos)
+    const resetCode = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    // 3. Salva no banco de dados
+    const updateQuery = `
+      UPDATE users 
+      SET reset_code = $1, reset_expires_at = $2 
+      WHERE id = $3;
+    `;
+    await db.query(updateQuery, [resetCode, expiresAt, user.id]);
+
+    // 4. Envia o email (Configuração Básica do Nodemailer)
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const mailOptions = {
+      from: '"Gestão TI Pro" <no-reply@gestaotipro.com>',
+      to: email,
+      subject: 'Seu código de recuperação de senha',
+      text: `Olá ${user.name}, seu código de recuperação é: ${resetCode}. Ele expira em 15 minutos.`
+    };
+
+    // Aqui usamos try/catch para não travar a API caso o serviço de email caia
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error('Erro ao enviar email:', emailError);
+      throw new Error('Falha ao enviar o email de recuperação');
+    }
+
+    return { message: 'Se o email existir, um código foi enviado.' };
+  }
+
+  async resetPassword(email, code, newPassword) {
+    // 1. Busca o usuário pelo email
+    const query = 'SELECT id, reset_code, reset_expires_at FROM users WHERE email = $1 AND active = true;';
+    const result = await db.query(query, [email]);
+    const user = result.rows[0];
+
+    if (!user) throw new Error('Código inválido ou expirado.');
+
+    // 2. Validações de segurança
+    if (user.reset_code !== code) {
+      throw new Error('Código inválido.');
+    }
+
+    if (new Date() > new Date(user.reset_expires_at)) {
+      throw new Error('Código expirado. Solicite um novo.');
+    }
+
+    // 3. Tudo certo! Hasheia a nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 4. Atualiza a senha e limpa as colunas de recuperação
+    const updateQuery = `
+      UPDATE users 
+      SET password = $1, reset_code = NULL, reset_expires_at = NULL 
+      WHERE id = $2;
+    `;
+    await db.query(updateQuery, [hashedPassword, user.id]);
+
+    return { message: 'Senha atualizada com sucesso.' };
   }
 }
 

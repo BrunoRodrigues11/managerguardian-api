@@ -65,6 +65,37 @@ class UserController {
       return res.status(500).json({ error: 'Erro ao desativar usuário' });
     }
   }
+
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: 'Email é obrigatório' });
+      
+      const response = await UserService.forgotPassword(email);
+      return res.status(200).json(response);
+    } catch (error) {
+      return res.status(500).json({ error: 'Erro ao processar recuperação', details: error.message });
+    }
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { email, code, newPassword } = req.body;
+      
+      if (!email || !code || !newPassword) {
+        return res.status(400).json({ error: 'Email, código e nova senha são obrigatórios' });
+      }
+
+      const response = await UserService.resetPassword(email, code, newPassword);
+      return res.status(200).json(response);
+    } catch (error) {
+      // Retorna 400 (Bad Request) para erros de regra de negócio como "Código expirado"
+      if (error.message.includes('Código')) {
+        return res.status(400).json({ error: error.message });
+      }
+      return res.status(500).json({ error: 'Erro ao redefinir senha' });
+    }
+  }
 }
 
 module.exports = new UserController();

@@ -131,6 +131,11 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Alterando tabela Users para add coluna de OTP
+ALTER TABLE users 
+ADD COLUMN reset_code VARCHAR(6),
+ADD COLUMN reset_expires_at TIMESTAMP WITH TIME ZONE;
+
 -- Tabela de junção para usuários e múltiplos perfis OK
 CREATE TABLE user_profiles (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
