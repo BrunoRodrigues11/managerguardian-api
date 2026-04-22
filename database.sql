@@ -12,6 +12,11 @@ CREATE TABLE manufacturing_units (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE manufacturing_units 
+ADD COLUMN city VARCHAR(100),
+ADD COLUMN state VARCHAR(2),
+ADD COLUMN notes TEXT;
+
 -- 2. Tabela de Empresas (Fornecedores) OK
 CREATE TABLE companies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -22,6 +27,13 @@ CREATE TABLE companies (
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE companies 
+ADD COLUMN type VARCHAR(50),
+ADD COLUMN contact_name VARCHAR(150),
+ADD COLUMN contact_info VARCHAR(150),
+ADD COLUMN address TEXT,
+ADD COLUMN notes TEXT;
 
 -- 3. Tabela de Tipos de Equipamento OK
 CREATE TABLE equipment_types (
@@ -40,6 +52,8 @@ CREATE TABLE technicians (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE technicians ADD COLUMN notes TEXT;
+
 -- 5. Tabela de Categorias de Custo OK
 CREATE TABLE cost_categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,6 +61,8 @@ CREATE TABLE cost_categories (
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE cost_categories ADD COLUMN description TEXT;
 
 -- 6. Tabela de Manutenções OK
 CREATE TABLE maintenances (
@@ -69,6 +85,14 @@ CREATE TABLE maintenances (
     closure_notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE maintenances ADD COLUMN approved_value DECIMAL(12, 2);
+
+ALTER TABLE maintenances 
+ADD COLUMN is_audited BOOLEAN DEFAULT false,
+ADD COLUMN audit_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN audit_notes TEXT,
+ADD COLUMN audit_user VARCHAR(100);
 
 -- 7. Tabela de Custos de Manutenção OK
 CREATE TABLE maintenance_costs (
@@ -103,6 +127,12 @@ CREATE TABLE visits (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE visits
+ADD COLUMN IF NOT EXISTS start_time VARCHAR(10),
+ADD COLUMN IF NOT EXISTS end_time VARCHAR(10),
+ADD COLUMN IF NOT EXISTS issue_summary TEXT,
+ADD COLUMN IF NOT EXISTS logs JSONB DEFAULT '[]'::jsonb;
+
 -- 9. Tabela de Logs de Visitas OK
 CREATE TABLE visit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -120,6 +150,8 @@ CREATE TABLE profiles (
     special_permissions JSONB,
     active BOOLEAN DEFAULT true
 );
+
+ALTER TABLE profiles ADD COLUMN description TEXT;
 
 -- 11. Tabela de Usuários  OK
 CREATE TABLE users (

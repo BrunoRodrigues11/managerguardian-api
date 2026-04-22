@@ -64,9 +64,20 @@ class MaintenanceService {
     return result.rows[0];
   }
 
-  async updateMaintenance(id, data) {
-    const fields = Object.keys(data);
-    const values = Object.values(data);
+async updateMaintenance(id, data) {
+    const payload = {};
+    
+    // Converte automaticamente chaves camelCase para snake_case (ex: isAudited -> is_audited)
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'id') continue; // Evita atualizar a Primary Key por engano
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      payload[snakeKey] = value;
+    }
+
+    const fields = Object.keys(payload);
+    const values = Object.values(payload);
+    
+    if (fields.length === 0) throw new Error('Nenhum dado fornecido para atualização.');
     
     // Construção de query dinâmica para facilitar updates parciais
     const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');

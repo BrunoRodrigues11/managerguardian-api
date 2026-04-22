@@ -5,85 +5,100 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
 class UserService {
+_sanitizeData(data) {
+    const payload = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'id' || key === 'profileIds' || key === 'profile_ids') continue;
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      payload[snakeKey] = value;
+    }
+    return payload;
+  }
+
   async createUser(data) {
-    const { name, email, password, profile_ids = [] } = data;
-    
-    // Criptografa a senha (o '10' é o salt rounds, um padrão excelente e seguro)
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Pegamos um "client" isolado para fazer uma Transação (garantir que ou salva tudo, ou não salva nada)
-    const client = await db.connect();
+    const client = await db.connect(); // Usamos transação
     try {
-      await client.query('BEGIN'); // Inicia a transação
-
-      // 1. Cria o usuário
-      const userQuery = `
-        INSERT INTO users (name, email, password) 
-        VALUES ($1, $2, $3) 
-        RETURNING id, name, email, active, created_at;
-      `;
-      const userResult = await client.query(userQuery, [name, email, hashedPassword]);
-      const user = userResult.rows[0];
-
-      // 2. Vincula os perfis na tabela user_profiles
-      if (profile_ids.length > 0) {
-        for (const profileId of profile_ids) {
-          await client.query(
-            'INSERT INTO user_profiles (user_id, profile_id) VALUES ($1, $2)',
-            [user.id, profileId]
-          );
-        }
+      await client.query('BEGIN');
+      
+      const payload = this._sanitizeData(data);
+      // Hash da senha se existir
+      if (payload.password) {
+          payload.password_hash = await bcrypt.hash(payload.password, 10);
+          delete payload.password;
       }
 
-      await client.query('COMMIT'); // Confirma a transação
-      return user; // Retorna sem a senha!
+      const fields = Object.keys(payload);
+      const values = Object.values(payload);
+      const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ');
+      
+      const userResult = await client.query(
+          `INSERT INTO users (${fields.join(', ')}) VALUES (${placeholders}) RETURNING *;`, 
+          values
+      );
+      const newUser = userResult.rows[0];
+
+      // Salvar os perfis na tabela de junção
+      const profileIds = data.profile_ids || data.profileIds || [];
+      for (const profileId of profileIds) {
+          await client.query(
+              'INSERT INTO user_profiles (user_id, profile_id) VALUES ($1, $2)',
+              [newUser.id, profileId]
+          );
+      }
+
+      await client.query('COMMIT');
+      return { ...newUser, profile_ids: profileIds };
     } catch (error) {
-      await client.query('ROLLBACK'); // Desfaz se der erro
+      await client.query('ROLLBACK');
       throw error;
     } finally {
-      client.release(); // Devolve a conexão pro pool
+      client.release();
     }
   }
 
-  async login(email, password) {
-    // Busca o usuário pela senha e email (trazemos a senha apenas aqui para comparar)
-    const query = 'SELECT * FROM users WHERE email = $1 AND active = true;';
+async login(email, password) {
+    // 1. QUERY CORRIGIDA: Agora fazemos o JOIN e o array_agg para trazer os perfis junto com o usuário!
+    const query = `
+      SELECT u.*, 
+             COALESCE(array_agg(up.profile_id) FILTER (WHERE up.profile_id IS NOT NULL), ARRAY[]::uuid[]) as profile_ids
+      FROM users u
+      LEFT JOIN user_profiles up ON u.id = up.user_id
+      WHERE u.email = $1 AND u.active = true
+      GROUP BY u.id;
+    `;
     const result = await db.query(query, [email]);
     const user = result.rows[0];
 
     if (!user) throw new Error('Usuário não encontrado ou inativo');
 
-    // Compara a senha enviada com o hash do banco
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // 2. Compara a senha enviada com o hash do banco
+    // (Adicionei uma dupla checagem caso sua coluna no banco se chame password ou password_hash)
+    const userPassword = user.password || user.password_hash; 
+    const isValidPassword = await bcrypt.compare(password, userPassword);
+    
     if (!isValidPassword) throw new Error('Senha incorreta');
 
-    // Gera o Token JWT (válido por 1 dia)
+    // 3. Gera o Token JWT (válido por 1 dia)
     const token = jwt.sign(
       { id: user.id, email: user.email }, 
       process.env.JWT_SECRET || 'sua_chave_super_secreta_aqui', 
       { expiresIn: '1d' }
     );
 
-    // Remove a senha do objeto antes de devolver pro Front-end
+    // 4. Remove a senha do objeto antes de devolver pro Front-end por segurança
     delete user.password;
+    delete user.password_hash;
     
     return { user, token };
   }
 
-  async getAllUsers() {
-    // Usa json_agg para trazer os perfis dentro de um array JSON nativo
+async getAllUsers() {
+    // Usamos array_agg para agrupar os IDs dos perfis do usuário em uma única linha
     const query = `
-      SELECT 
-        u.id, u.name, u.email, u.active, u.created_at,
-        COALESCE(
-          json_agg(
-            json_build_object('id', p.id, 'name', p.name, 'permissions', p.permissions)
-          ) FILTER (WHERE p.id IS NOT NULL), '[]'
-        ) AS profiles
+      SELECT u.*, 
+             COALESCE(array_agg(up.profile_id) FILTER (WHERE up.profile_id IS NOT NULL), ARRAY[]::uuid[]) as profile_ids
       FROM users u
       LEFT JOIN user_profiles up ON u.id = up.user_id
-      LEFT JOIN profiles p ON up.profile_id = p.id
-      WHERE u.active = true
       GROUP BY u.id
       ORDER BY u.name ASC;
     `;
@@ -112,51 +127,51 @@ class UserService {
     return result.rows[0];
   }
 
-  async updateUser(id, data) {
-    const { name, email, active, profile_ids } = data;
-    let { password } = data;
-
+async updateUser(id, data) {
     const client = await db.connect();
     try {
       await client.query('BEGIN');
-
-      // 1. Monta a query dinâmica para atualizar os dados básicos
-      let updateQuery = 'UPDATE users SET name = $1, email = $2, active = $3';
-      let values = [name, email, active];
-      let paramIndex = 4;
-
-      // Se a senha foi enviada no update, fazemos o hash dela e adicionamos na query
-      if (password) {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        updateQuery += `, password = $${paramIndex}`;
-        values.push(hashedPassword);
-        paramIndex++;
+      
+      const payload = this._sanitizeData(data);
+      
+      // Se a senha foi enviada, atualiza o hash. Se veio vazia, removemos do payload para não sobrescrever.
+      if (payload.password) {
+          payload.password_hash = await bcrypt.hash(payload.password, 10);
+          delete payload.password;
+      } else {
+          delete payload.password;
       }
 
-      updateQuery += ` WHERE id = $${paramIndex} RETURNING id, name, email, active, created_at;`;
-      values.push(id);
-
-      const userResult = await client.query(updateQuery, values);
-      const user = userResult.rows[0];
-
-      if (!user) throw new Error('Usuário não encontrado');
-
-      // 2. Atualiza os perfis (se o array profile_ids foi enviado)
-      if (profile_ids && Array.isArray(profile_ids)) {
-        // Limpa os perfis antigos
-        await client.query('DELETE FROM user_profiles WHERE user_id = $1', [id]);
-        
-        // Insere os novos perfis
-        for (const profileId of profile_ids) {
-          await client.query(
-            'INSERT INTO user_profiles (user_id, profile_id) VALUES ($1, $2)',
-            [id, profileId]
+      const fields = Object.keys(payload);
+      const values = Object.values(payload);
+      
+      let updatedUser = { id };
+      
+      if (fields.length > 0) {
+          const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+          const userResult = await client.query(
+              `UPDATE users SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *;`, 
+              [...values, id]
           );
-        }
+          updatedUser = userResult.rows[0];
+      }
+
+      // Atualiza os perfis (Remove os antigos e insere os novos)
+      if (data.profile_ids || data.profileIds) {
+          const profileIds = data.profile_ids || data.profileIds;
+          await client.query('DELETE FROM user_profiles WHERE user_id = $1', [id]);
+          
+          for (const profileId of profileIds) {
+              await client.query(
+                  'INSERT INTO user_profiles (user_id, profile_id) VALUES ($1, $2)',
+                  [id, profileId]
+              );
+          }
+          updatedUser.profile_ids = profileIds;
       }
 
       await client.query('COMMIT');
-      return user; // Retorna sem a senha, conforme o padrão
+      return updatedUser;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

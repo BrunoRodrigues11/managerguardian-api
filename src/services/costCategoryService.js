@@ -1,14 +1,25 @@
 const db = require('../config/db');
 
 class CostCategoryService {
+  _sanitizeData(data) {
+    const payload = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'id') continue;
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      payload[snakeKey] = value;
+    }
+    return payload;
+  }
+
   async createCategory(data) {
-    const { name } = data;
-    const query = `
-      INSERT INTO cost_categories (name) 
-      VALUES ($1) 
-      RETURNING *;
-    `;
-    const result = await db.query(query, [name]);
+    const payload = this._sanitizeData(data);
+    const fields = Object.keys(payload);
+    const values = Object.values(payload);
+    if (fields.length === 0) throw new Error('Dados inválidos.');
+
+    const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ');
+    const query = `INSERT INTO cost_categories (${fields.join(', ')}) VALUES (${placeholders}) RETURNING *;`;
+    const result = await db.query(query, values);
     return result.rows[0];
   }
 
@@ -25,19 +36,18 @@ class CostCategoryService {
   }
 
   async updateCategory(id, data) {
-    const { name, active } = data;
-    const query = `
-      UPDATE cost_categories 
-      SET name = $1, active = $2 
-      WHERE id = $3 
-      RETURNING *;
-    `;
-    const result = await db.query(query, [name, active, id]);
+    const payload = this._sanitizeData(data);
+    const fields = Object.keys(payload);
+    const values = Object.values(payload);
+    if (fields.length === 0) throw new Error('Dados inválidos.');
+
+    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const query = `UPDATE cost_categories SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *;`;
+    const result = await db.query(query, [...values, id]);
     return result.rows[0];
   }
 
   async deleteCategory(id) {
-    // Soft delete para não quebrar o histórico financeiro das manutenções
     const query = 'UPDATE cost_categories SET active = false WHERE id = $1 RETURNING *;';
     const result = await db.query(query, [id]);
     return result.rows[0];

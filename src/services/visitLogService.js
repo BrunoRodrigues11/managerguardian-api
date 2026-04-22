@@ -1,34 +1,57 @@
 const db = require('../config/db');
 
-class VisitLogService {
-  async createLog(data) {
-    const { visit_id, message, user_name } = data;
-    const query = `
-      INSERT INTO visit_logs (visit_id, message, user_name) 
-      VALUES ($1, $2, $3) 
-      RETURNING *;
-    `;
-    const result = await db.query(query, [visit_id, message, user_name]);
+class UnitService {
+  _sanitizeData(data) {
+    const payload = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'id') continue;
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      payload[snakeKey] = value;
+    }
+    return payload;
+  }
+
+  async createUnit(data) {
+    const payload = this._sanitizeData(data);
+    const fields = Object.keys(payload);
+    const values = Object.values(payload);
+    if (fields.length === 0) throw new Error('Dados inválidos.');
+
+    const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ');
+    const query = `INSERT INTO manufacturing_units (${fields.join(', ')}) VALUES (${placeholders}) RETURNING *;`;
+    const result = await db.query(query, values);
     return result.rows[0];
   }
 
-  // Busca todos os logs de uma visita específica (ordenados do mais antigo para o mais novo)
-  async getLogsByVisitId(visitId) {
-    const query = `
-      SELECT * FROM visit_logs 
-      WHERE visit_id = $1 
-      ORDER BY date ASC;
-    `;
-    const result = await db.query(query, [visitId]);
+  async getAllUnits() {
+    const query = 'SELECT * FROM manufacturing_units WHERE active = true ORDER BY name ASC;';
+    const result = await db.query(query);
     return result.rows;
   }
-  
-  // (Opcional) Busca um log específico por ID, caso seja necessário detalhar algo
-  async getLogById(id) {
-    const query = 'SELECT * FROM visit_logs WHERE id = $1;';
+
+  async getUnitById(id) {
+    const query = 'SELECT * FROM manufacturing_units WHERE id = $1 AND active = true;';
+    const result = await db.query(query, [id]);
+    return result.rows[0];
+  }
+
+  async updateUnit(id, data) {
+    const payload = this._sanitizeData(data);
+    const fields = Object.keys(payload);
+    const values = Object.values(payload);
+    if (fields.length === 0) throw new Error('Dados inválidos.');
+
+    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const query = `UPDATE manufacturing_units SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *;`;
+    const result = await db.query(query, [...values, id]);
+    return result.rows[0];
+  }
+
+  async deleteUnit(id) {
+    const query = 'UPDATE manufacturing_units SET active = false WHERE id = $1 RETURNING *;';
     const result = await db.query(query, [id]);
     return result.rows[0];
   }
 }
 
-module.exports = new VisitLogService();
+module.exports = new UnitService();

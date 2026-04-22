@@ -6,13 +6,13 @@ class ProfileService {
     const { name, permissions = {}, special_permissions = {} } = data;
     
     const query = `
-      INSERT INTO profiles (name, permissions, special_permissions) 
-      VALUES ($1, $2, $3) 
+      INSERT INTO profiles (name, description,permissions, special_permissions) 
+      VALUES ($1, $2, $3, $4) 
       RETURNING *;
     `;
     
     // A biblioteca 'pg' lida automaticamente com os objetos JS para JSONB
-    const result = await db.query(query, [name, permissions, special_permissions]);
+    const result = await db.query(query, [name, description, permissions, special_permissions]);
     return result.rows[0];
   }
 
@@ -32,8 +32,8 @@ class ProfileService {
     const { name, permissions, special_permissions, active } = data;
     const query = `
       UPDATE profiles 
-      SET name = $1, permissions = $2, special_permissions = $3, active = $4 
-      WHERE id = $5 
+      SET name = $1, description = $2, permissions = $3, special_permissions = $4, active = $5 
+      WHERE id = $6 
       RETURNING *;
     `;
     const result = await db.query(query, [name, permissions, special_permissions, active, id]);
