@@ -1,34 +1,16 @@
 const db = require('../config/db');
+const { sanitizeData } = require('../utils/dataSanitizer');
 
 class MaintenanceService {
-_sanitizeData(data) {
-    const payload = {};
-    for (const [key, value] of Object.entries(data)) {
-      if (key === 'id') continue;
-      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-      
-      // O SEGREDO ESTÁ AQUI: Transformar strings vazias em NULL
-      if (value === '') {
-        payload[snakeKey] = null;
-      } else {
-        payload[snakeKey] = value;
-      }
-    }
-    return payload;
-  }
-
   async createMaintenance(data) {
-    const payload = this._sanitizeData(data);
+    const payload = sanitizeData(data);
     const fields = Object.keys(payload);
     const values = Object.values(payload);
     
-    console.log('Payload sanitizado:', payload); // Debug: Verificar o payload antes de inserir
     if (fields.length === 0) throw new Error('Dados inválidos.');
 
     const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ');
     const query = `INSERT INTO maintenances (${fields.join(', ')}) VALUES (${placeholders}) RETURNING *;`;
-    console.log('Query SQL:', query); // Debug: Verificar a query SQL gerada
-    console.log('Values:', values); // Debug: Verificar os valores que serão inseridos
 
     const result = await db.query(query, values);
     return result.rows[0];
@@ -47,7 +29,7 @@ _sanitizeData(data) {
   }
 
   async updateMaintenance(id, data) {
-    const payload = this._sanitizeData(data);
+    const payload = _sanitizeData(data);
     const fields = Object.keys(payload);
     const values = Object.values(payload);
     

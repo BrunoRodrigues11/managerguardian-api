@@ -1,13 +1,16 @@
 const db = require('../config/db');
+const { sanitizeData } = require('../utils/dataSanitizer');
 
 class MaintenanceCostService {
   async createCost(data) {
-    const { maintenance_id, category_id, description, quantity = 1, unit_value } = data;
+    const sanitizedData = sanitizeData(data);
+    const { maintenance_id, category_id, description, quantity = 1, unit_value } = sanitizedData;
     const query = `
       INSERT INTO maintenance_costs (maintenance_id, category_id, description, quantity, unit_value) 
       VALUES ($1, $2, $3, $4, $5) 
       RETURNING *;
     `;
+    
     const result = await db.query(query, [maintenance_id, category_id, description, quantity, unit_value]);
     return result.rows[0];
   }

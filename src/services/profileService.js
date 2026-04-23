@@ -1,19 +1,32 @@
 const db = require('../config/db');
+const { sanitizeData } = require('../utils/dataSanitizer');
 
 class ProfileService {
   async createProfile(data) {
-    // Definimos objetos vazios {} como fallback caso o front-end não envie as permissões na criação
-    const { name, permissions = {}, special_permissions = {} } = data;
-    
-    const query = `
-      INSERT INTO profiles (name, description,permissions, special_permissions) 
-      VALUES ($1, $2, $3, $4) 
-      RETURNING *;
-    `;
-    
-    // A biblioteca 'pg' lida automaticamente com os objetos JS para JSONB
-    const result = await db.query(query, [name, description, permissions, special_permissions]);
-    return result.rows[0];
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      const payload = sanitizeData(data);
+      const query = `
+        INSERT INTO profiles (name, description, permissions, special_permissions, active)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+      `;
+      const result = await client.query(query, [
+        payload.name, 
+        payload.description,
+        payload.permissions,
+        payload.special_permissions,
+        payload.active !== undefined ? payload.active : true
+      ]);
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async getAllProfiles() {
@@ -29,7 +42,7 @@ class ProfileService {
   }
 
   async updateProfile(id, data) {
-    const { name, permissions, special_permissions, active } = data;
+    const { name, permissions, special_permissions, active } = sanitizeData(data);
     const query = `
       UPDATE profiles 
       SET name = $1, description = $2, permissions = $3, special_permissions = $4, active = $5 

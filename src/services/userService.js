@@ -3,24 +3,15 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const { sanitizeData } = require('../utils/dataSanitizer');
 
 class UserService {
-_sanitizeData(data) {
-    const payload = {};
-    for (const [key, value] of Object.entries(data)) {
-      if (key === 'id' || key === 'profileIds' || key === 'profile_ids') continue;
-      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-      payload[snakeKey] = value;
-    }
-    return payload;
-  }
-
   async createUser(data) {
     const client = await db.connect(); // Usamos transação
     try {
       await client.query('BEGIN');
       
-      const payload = this._sanitizeData(data);
+      const payload = sanitizeData(data);
       // Hash da senha se existir
       if (payload.password) {
           payload.password_hash = await bcrypt.hash(payload.password, 10);
@@ -132,7 +123,7 @@ async updateUser(id, data) {
     try {
       await client.query('BEGIN');
       
-      const payload = this._sanitizeData(data);
+      const payload = _sanitizeData(data);
       
       // Se a senha foi enviada, atualiza o hash. Se veio vazia, removemos do payload para não sobrescrever.
       if (payload.password) {
@@ -222,7 +213,7 @@ async updateUser(id, data) {
     });
 
     const mailOptions = {
-      from: '"Gestão TI Pro" <no-reply@gestaotipro.com>',
+      from: '"Manager Guardian" <no-reply@managerguardian.com>',
       to: email,
       subject: 'Seu código de recuperação de senha',
       text: `Olá ${user.name}, seu código de recuperação é: ${resetCode}. Ele expira em 15 minutos.`
